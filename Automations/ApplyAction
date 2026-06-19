@@ -1,0 +1,138 @@
+from SiemplifyAction import SiemplifyAction
+from SiemplifyUtils import output_handler
+from ScriptResult import EXECUTION_STATE_COMPLETED, EXECUTION_STATE_FAILED
+
+import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+SCRIPT_NAME = "Fortra Update Alert"
+
+
+@output_handler
+def main():
+
+    siemplify = SiemplifyAction()
+
+    status = EXECUTION_STATE_FAILED
+    result_value = False
+    output_message = ""
+
+    try:
+
+        # -----------------------------
+        # PARAMETERS
+        # -----------------------------
+        incident_number = siemplify.extract_action_param(
+            "Incident Number",
+            print_value=True
+        )
+
+        action_code = siemplify.extract_action_param(
+            "Action Code",
+            print_value=True
+        )
+
+        comment = siemplify.extract_action_param(
+            "Comment",
+            print_value=True
+        )
+
+        bearer_token = siemplify.extract_action_param(
+            "Bearer Token",
+            print_value=False
+        )
+
+        if not incident_number:
+            raise Exception("Missing Incident Number")
+
+        if not action_code:
+            raise Exception("Missing Action Code")
+
+        if not bearer_token:
+            raise Exception("Missing Bearer Token")
+
+        # -----------------------------
+        # API URL
+        # -----------------------------
+        api_root = "https://platform.fortra.com"
+
+        url = (
+            f"{api_root}/bp/api/v1/incident/"
+            f"{incident_number}/action/{action_code}"
+        )
+
+        # -----------------------------
+        # HEADERS
+        # -----------------------------
+        headers = {
+            "accept": "*/*",
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json"
+        }
+
+        # -----------------------------
+        # BODY
+        # -----------------------------
+        payload = {
+            "comment": comment or ""
+        }
+
+        # -----------------------------
+        # REQUEST
+        # -----------------------------
+        response = requests.put(
+            url,
+            headers=headers,
+            json=payload,
+            verify=False,
+            timeout=60
+        )
+
+        if response.status_code not in [200, 201, 204]:
+            raise Exception(
+                f"HTTP {response.status_code} returned from "
+                f"Fortra API: {response.text}"
+            )
+
+        # -----------------------------
+        # RESPONSE
+        # -----------------------------
+        try:
+            response_data = response.json()
+
+        except ValueError:
+            response_data = {
+                "status": "updated",
+                "http_status": response.status_code,
+                "raw_response": response.text
+            }
+
+        # -----------------------------
+        # OUTPUT
+        # -----------------------------
+        siemplify.result.add_result_json(response_data)
+
+        status = EXECUTION_STATE_COMPLETED
+        result_value = True
+
+        output_message = (
+            f"Successfully updated Fortra incident "
+            f"{incident_number} with action {action_code}"
+        )
+
+    except Exception as e:
+
+        output_message = (
+            f"Failed to update Fortra incident: {str(e)}"
+        )
+
+        siemplify.LOGGER.error(output_message)
+        siemplify.LOGGER.exception(e)
+
+    siemplify.end(status, output_message, result_value)
+
+
+if __name__ == "__main__":
+    main()
