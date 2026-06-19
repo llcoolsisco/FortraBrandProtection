@@ -1,0 +1,143 @@
+from SiemplifyAction import SiemplifyAction
+from SiemplifyUtils import output_handler
+from ScriptResult import EXECUTION_STATE_COMPLETED, EXECUTION_STATE_FAILED
+
+import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+SCRIPT_NAME = "Fortra Create Domain Incident"
+
+
+@output_handler
+def main():
+
+    siemplify = SiemplifyAction()
+
+    status = EXECUTION_STATE_FAILED
+    result_value = False
+    output_message = ""
+
+    try:
+        # -----------------------------
+        # PARAMETERS
+        # -----------------------------
+        bearer_token = siemplify.extract_action_param(
+            "Bearer Token",
+            print_value=False
+        )
+
+        brand_name = siemplify.extract_action_param(
+            "Brand Name",
+            print_value=True
+        )
+
+        url_value = siemplify.extract_action_param(
+            "URL",
+            print_value=True
+        )
+
+        comment = siemplify.extract_action_param(
+            "Comment",
+            print_value=True
+        )
+
+        threat_type = siemplify.extract_action_param(
+            "Threat Type",
+            print_value=True
+        )
+
+        if not bearer_token:
+            raise Exception("Missing Bearer Token")
+
+        if not brand_name:
+            raise Exception("Missing Brand Name")
+
+        if not url_value:
+            raise Exception("Missing URL")
+
+        if not threat_type:
+            raise Exception("Missing Threat Type")
+
+        # -----------------------------
+        # API URL
+        # -----------------------------
+        api_root = "https://platform.fortra.com"
+        url = f"{api_root}/bp/api/v1/incident/domains"
+
+        # -----------------------------
+        # HEADERS
+        # -----------------------------
+        headers = {
+            "accept": "application/json",
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json"
+        }
+
+        # -----------------------------
+        # BODY
+        # -----------------------------
+        payload = {
+            "brandName": brand_name,
+            "url": url_value,
+            "comment": comment or "",
+            "threatType": threat_type
+        }
+
+        # -----------------------------
+        # REQUEST
+        # -----------------------------
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            verify=False,
+            timeout=60
+        )
+
+        if response.status_code not in [200, 201, 202, 204]:
+            raise Exception(
+                f"HTTP {response.status_code} returned from "
+                f"Fortra API: {response.text}"
+            )
+
+        # -----------------------------
+        # RESPONSE
+        # -----------------------------
+        try:
+            response_data = response.json()
+
+        except ValueError:
+            response_data = {
+                "status": "created",
+                "http_status": response.status_code,
+                "raw_response": response.text
+            }
+
+        # -----------------------------
+        # OUTPUT
+        # -----------------------------
+        siemplify.result.add_result_json(response_data)
+
+        status = EXECUTION_STATE_COMPLETED
+        result_value = True
+
+        output_message = (
+            f"Successfully created Fortra domain incident for URL: {url_value}"
+        )
+
+    except Exception as e:
+
+        output_message = (
+            f"Failed to create Fortra domain incident: {str(e)}"
+        )
+
+        siemplify.LOGGER.error(output_message)
+        siemplify.LOGGER.exception(e)
+
+    siemplify.end(status, output_message, result_value)
+
+
+if __name__ == "__main__":
+    main()
