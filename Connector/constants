@@ -1,0 +1,155 @@
+# =========================================================
+# FORTRA BRAND PROTECTION CONNECTOR
+# CONSTANTS
+# =========================================================
+
+# =========================================================
+# CONNECTOR INFORMATION
+# =========================================================
+
+CONNECTOR_NAME = "FortraBrandProtectionConnector"
+
+VENDOR = "Fortra"
+
+PRODUCT = "Brand Protection"
+
+RULE_GENERATOR = (
+    "Fortra Brand Protection Incident"
+)
+
+# =========================================================
+# API URLS
+# =========================================================
+
+TOKEN_URL = (
+    "https://platform.fortra.com/"
+    "idp/realms/products/protocol/"
+    "openid-connect/token"
+)
+
+INCIDENT_SEARCH_URL = (
+    "https://platform.fortra.com/"
+    "bp/api/v1/incident/search"
+)
+
+# =========================================================
+# DEFAULT PARAMETERS
+# =========================================================
+
+DEFAULT_PAGE_NUMBER = 1
+
+DEFAULT_PAGE_SIZE = 10
+
+DEFAULT_INCIDENT_STATUS = (
+    "RequiresInput"
+)
+
+DEFAULT_VERIFY_SSL = True
+
+DEFAULT_TIMEOUT = 60
+
+# =========================================================
+# PRIORITY MAPPING
+# =========================================================
+
+# Informative = -1
+# Low = 40
+# Medium = 60
+# High = 80
+# Critical = 100
+
+SEVERITY_MAP = {
+    "Critical": 100,
+    "High": 80,
+    "Medium": 60,
+    "Low": 40,
+    "Info": -1
+}
+
+# =========================================================
+# HTTP HEADERS
+# =========================================================
+
+TOKEN_HEADERS = {
+    "Content-Type":
+        "application/x-www-form-urlencoded"
+}
+
+DEFAULT_HEADERS = {
+    "accept": "application/json"
+}
+
+# =========================================================
+# SIEMPLIFY PARAMETERS
+# =========================================================
+
+CLIENT_ID_PARAM = "Client ID"
+
+CLIENT_SECRET_PARAM = "Client Secret"
+
+PAGE_NUMBER_PARAM = "Page Number"
+
+PAGE_SIZE_PARAM = "Page Size"
+
+INCIDENT_STATUS_PARAM = (
+    "Incident Status"
+)
+
+VERIFY_SSL_PARAM = "Verify SSL"
+
+# =========================================================
+# LOGGING MESSAGES
+# =========================================================
+
+LOG_CONNECTOR_STARTED = (
+    "==================== "
+    "Connector Started "
+    "===================="
+)
+
+LOG_CONNECTOR_FINISHED = (
+    "==================== "
+    "Connector Finished "
+    "===================="
+)
+
+LOG_GENERATING_TOKEN = (
+    "Generating Bearer Token"
+)
+
+LOG_TOKEN_SUCCESS = (
+    "Bearer token generated successfully"
+)
+
+LOG_RETRIEVING_INCIDENTS = (
+    "Retrieving incidents from "
+    "Fortra Brand Protection"
+)
+
+LOG_UNKNOWN_RESPONSE = (
+    "Unknown API response structure"
+)
+
+LOG_BUILD_ALERT = (
+    "Building alert from incident"
+)
+
+LOG_FAILED_INCIDENT = (
+    "Failed to process incident"
+)
+
+LOG_CONNECTOR_FAILED = (
+    "Connector execution failed"
+)
+
+# =========================================================
+# ERROR MESSAGES
+# =========================================================
+
+ERROR_TOKEN_FAILURE = (
+    "Failed to retrieve Bearer token"
+)
+
+ERROR_API_RESPONSE = (
+    "Unexpected API response"
+)
