@@ -1,0 +1,395 @@
+import json
+import requests
+
+from constants import (
+    TOKEN_URL,
+    INCIDENT_SEARCH_URL
+)
+
+
+class FortraBPManager:
+
+    def __init__(
+        self,
+        client_id,
+        client_secret,
+        verify_ssl=True,
+        proxy=None
+    ):
+
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.verify_ssl = verify_ssl
+        self.proxy = proxy
+
+        self.access_token = None
+
+        # ================================================
+        # PROXY CONFIGURATION
+        # ================================================
+
+        self.proxies = None
+
+        if proxy:
+
+            self.proxies = {
+                "http": proxy,
+                "https": proxy
+            }
+
+    # =====================================================
+    # CLEAN VALUE
+    # =====================================================
+
+    def clean_value(self, value):
+
+        if isinstance(value, str):
+
+            return value.strip()
+
+        return value
+
+    # =====================================================
+    # AUTHENTICATION
+    # =====================================================
+
+    def authenticate(self):
+
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret
+        }
+
+        headers = {
+            "Content-Type":
+                "application/x-www-form-urlencoded"
+        }
+
+        response = requests.post(
+            TOKEN_URL,
+            headers=headers,
+            data=payload,
+            verify=self.verify_ssl,
+            proxies=self.proxies,
+            timeout=60
+        )
+
+        response.raise_for_status()
+
+        response_data = response.json()
+
+        access_token = response_data.get("access_token")
+
+        if not access_token:
+
+            raise Exception(
+                "Failed to retrieve Bearer token"
+            )
+
+        self.access_token = access_token
+
+        return access_token
+
+    # =====================================================
+    # GET AUTH HEADERS
+    # =====================================================
+
+    def get_headers(self):
+
+        if not self.access_token:
+
+            self.authenticate()
+
+        return {
+            "accept": "application/json",
+            "Authorization":
+                f"Bearer {self.access_token}"
+        }
+
+    # =====================================================
+    # BUILD NORMALIZED EVENT
+    # =====================================================
+
+    def build_event(self, incident):
+
+        # ================================================
+        # URL ITEM
+        # ================================================
+
+        url_items = incident.get("urlItems", [])
+
+        first_url_item = (
+            url_items[0]
+            if url_items
+            else {}
+        )
+
+        event = {
+
+            # ============================================
+            # CORE INCIDENT DATA
+            # ============================================
+
+            "incident_id":
+                self.clean_value(
+                    incident.get("incidentId")
+                ),
+
+            "incident_number":
+                self.clean_value(
+                    incident.get("incidentNumber")
+                ),
+
+            "incident_source":
+                self.clean_value(
+                    incident.get("incidentSource")
+                ),
+
+            "incident_type":
+                self.clean_value(
+                    incident.get("incidentType")
+                ),
+
+            "status":
+                self.clean_value(
+                    incident.get("status")
+                ),
+
+            "resolution_status":
+                self.clean_value(
+                    incident.get("resolutionStatus")
+                ),
+
+            "severity":
+                self.clean_value(
+                    incident.get("severity")
+                ),
+
+            "title":
+                self.clean_value(
+                    incident.get("title")
+                ),
+
+            "threat_type":
+                self.clean_value(
+                    incident.get("threatType")
+                ),
+
+            "brand":
+                self.clean_value(
+                    incident.get("brand")
+                ),
+
+            # ============================================
+            # URL / DOMAIN DATA
+            # ============================================
+
+            "url":
+                self.clean_value(
+                    first_url_item.get("url")
+                ),
+
+            "ip_address":
+                self.clean_value(
+                    first_url_item.get("ipAddress")
+                ),
+
+            "hosting_provider":
+                self.clean_value(
+                    first_url_item.get("hostingProvider")
+                ),
+
+            "host_country":
+                self.clean_value(
+                    first_url_item.get("hostCountry")
+                ),
+
+            "domain":
+                self.clean_value(
+                    first_url_item.get("domain")
+                ),
+
+            "name_server":
+                self.clean_value(
+                    first_url_item.get("nameServer")
+                ),
+
+            "mail_server":
+                self.clean_value(
+                    first_url_item.get("mailServer")
+                ),
+
+            "registrar":
+                self.clean_value(
+                    first_url_item.get("registrar")
+                ),
+
+            "registrant_name":
+                self.clean_value(
+                    first_url_item.get("registrantName")
+                ),
+
+            # ============================================
+            # TIMESTAMPS
+            # ============================================
+
+            "created_utc":
+                incident.get("createdUtc"),
+
+            "modified_utc":
+                incident.get("modifiedUtc"),
+
+            "resolved_utc":
+                incident.get("resolvedUtc"),
+
+            "mitigation_started_utc":
+                incident.get("mitigationStartedUtc"),
+
+            # ============================================
+            # INCIDENT AGE
+            # ============================================
+
+            "incident_age_days":
+                incident.get(
+                    "incidentAge",
+                    {}
+                ).get("days"),
+
+            "incident_age_hours":
+                incident.get(
+                    "incidentAge",
+                    {}
+                ).get("hours"),
+
+            "incident_age_minutes":
+                incident.get(
+                    "incidentAge",
+                    {}
+                ).get("minutes"),
+
+            # ============================================
+            # RAW PAYLOAD
+            # ============================================
+
+            "rawJSON":
+                json.dumps(incident)
+
+        }
+
+        # ================================================
+        # ARTIFACTS
+        # ================================================
+
+        event["artifacts"] = (
+            self.extract_artifacts(event)
+        )
+
+        return event
+
+    # =====================================================
+    # EXTRACT ARTIFACTS
+    # =====================================================
+
+    def extract_artifacts(self, event):
+
+        artifacts = []
+
+        # ================================================
+        # URL
+        # ================================================
+
+        if event.get("url"):
+
+            artifacts.append({
+                "type": "URL",
+                "value": event.get("url")
+            })
+
+        # ================================================
+        # DOMAIN
+        # ================================================
+
+        if event.get("domain"):
+
+            artifacts.append({
+                "type": "DOMAIN",
+                "value": event.get("domain")
+            })
+
+        # ================================================
+        # IP ADDRESS
+        # ================================================
+
+        if event.get("ip_address"):
+
+            artifacts.append({
+                "type": "IP_ADDRESS",
+                "value": event.get("ip_address")
+            })
+
+        return artifacts
+
+    # =====================================================
+    # SEARCH INCIDENTS
+    # =====================================================
+
+    def search_incidents(
+        self,
+        page_number=1,
+        page_size=10,
+        incident_status="RequiresInput"
+    ):
+
+        params = {
+            "PageNumber": page_number,
+            "PageSize": page_size,
+            "IncidentStatusCodes": incident_status
+        }
+
+        response = requests.get(
+            INCIDENT_SEARCH_URL,
+            headers=self.get_headers(),
+            params=params,
+            verify=self.verify_ssl,
+            proxies=self.proxies,
+            timeout=60
+        )
+
+        response.raise_for_status()
+
+        response_data = response.json()
+
+        incidents = response_data
+
+        normalized_events = []
+
+        for incident in incidents:
+
+            normalized_events.append(
+                self.build_event(incident)
+            )
+
+        return normalized_events
+
+    # =====================================================
+    # GET INCIDENT BY ID
+    # =====================================================
+
+    def get_incident_by_id(self, incident_id):
+
+        url = f"{INCIDENT_SEARCH_URL}/{incident_id}"
+
+        response = requests.get(
+            url,
+            headers=self.get_headers(),
+            verify=self.verify_ssl,
+            proxies=self.proxies,
+            timeout=60
+        )
+
+        response.raise_for_status()
+
+        incident = response.json()
+
+        return self.build_event(incident)
