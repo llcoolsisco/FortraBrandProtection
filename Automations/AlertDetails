@@ -1,0 +1,83 @@
+from SiemplifyAction import SiemplifyAction
+from SiemplifyUtils import output_handler
+from ScriptResult import EXECUTION_STATE_COMPLETED, EXECUTION_STATE_FAILED
+
+import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+@output_handler
+def main():
+
+    siemplify = SiemplifyAction()
+
+    status = EXECUTION_STATE_FAILED
+    result_value = False
+    output_message = ""
+
+    try:
+
+        # -----------------------------
+        # PARAMETERS
+        # -----------------------------
+        incident_id = siemplify.extract_action_param(
+            "Incident ID",
+            print_value=True
+        )
+
+        bearer_token = siemplify.extract_action_param(
+            "Bearer Token",
+            print_value=False
+        )
+
+        if not incident_id:
+            raise Exception("Missing Incident ID")
+
+        if not bearer_token:
+            raise Exception("Missing Bearer Token")
+
+        # -----------------------------
+        # FIXED API ROOT (NO PARAM NEEDED)
+        # -----------------------------
+        api_root = "https://platform.fortra.com"
+
+        url = f"{api_root}/bp/api/v1/incident/{incident_id}/details"
+
+        headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Accept": "application/json"
+        }
+
+        response = requests.get(
+            url,
+            headers=headers,
+            verify=False,
+            timeout=60
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        # -----------------------------
+        # OUTPUT
+        # -----------------------------
+        siemplify.result.add_result_json(data)
+
+        status = EXECUTION_STATE_COMPLETED
+        result_value = True
+        output_message = f"Successfully retrieved case details for Incident ID {incident_id}"
+
+    except Exception as e:
+
+        output_message = f"Failed to retrieve case details: {str(e)}"
+        siemplify.LOGGER.error(output_message)
+        siemplify.LOGGER.exception(e)
+
+    siemplify.end(output_message, result_value, status)
+
+
+if __name__ == "__main__":
+    main()
